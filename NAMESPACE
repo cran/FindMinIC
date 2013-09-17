@@ -1,0 +1,6 @@
+import(stats)
+importFrom("sets","as.set")
+importFrom("nlme","groupedData")
+importFrom("nlme","nfGroupedData")
+exportPattern("^[[:alpha:]]+")
+exportMethods()
