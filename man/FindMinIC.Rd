@@ -15,17 +15,20 @@ Evaluates all models in a set of candidates, and ranks them by IC such as AIC.  
 # Find the minimum IC
 \method{FindMinIC}{default}(coly, candidates = c(""), fixed = c(""), data = list(),
           modeltype = "lm", group = "", ic = "AIC", ...)
-\method{FindMinIC}{formula}(formula, data=list(), ...)
+\method{FindMinIC}{formula}(formula, data=list(), na.action=na.omit, ...)
 
 # find the minimum IC, fmi is the shorter name form of FindMinIC
 \method{fmi}{default}(coly, candidates = c(""), fixed = c(""), data = list(),
     modeltype = "lm", group = "", ic = "AIC", ...)
-\method{fmi}{formula}(formula, data=list(), ...)
+\method{fmi}{formula}(formula, data=list(), na.action=na.omit, ...)
 %% TODO: use better name than coly?
 }
 \arguments{
   \item{formula}{
 A formula containing the response variable and terms. All the terms of the formula become candidates for inclusion as covariates.
+}
+  \item{na.action}{
+action to use when data contains NAs.  Options include na.omit, na.exclude, na.fail
 }
   \item{coly}{
 The name of the column to use for the response variable \code{y} of the model

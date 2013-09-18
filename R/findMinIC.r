@@ -44,8 +44,8 @@ fmi.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), modelt
   return(FindMinIC.default(coly, candidates, fixed, data, modeltype, group, ic, ...))
 }
 
-fmi.formula <- function(formula, data=list(), ...) {
-  return(FindMinIC.formula(formula, data, ...))
+fmi.formula <- function(formula, data=list(), na.action=na.omit, ...) {
+  return(FindMinIC.formula(formula, data, na.action, ...))
 }
 
 FindMinIC <- function(coly, ...) UseMethod("FindMinIC")
@@ -177,9 +177,9 @@ FindMinIC.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), 
   return(answer)
 } # end FindMinIC.default
 
-FindMinIC.formula <- function(formula, data=list(), ...)
+FindMinIC.formula <- function(formula, data=list(), na.action=na.omit, ...)
 {
-    mf <- model.frame(formula=formula, data=data)
+    mf <- model.frame(formula=formula, data=data, na.action=na.action)
     nms <- names(mf)
     coly <- nms[[1]]
     candidates <- nms[-1]
