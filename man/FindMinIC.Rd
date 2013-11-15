@@ -14,13 +14,13 @@ Evaluates all models in a set of candidates, and ranks them by IC such as AIC.  
 \usage{
 # Find the minimum IC
 \method{FindMinIC}{default}(coly, candidates = c(""), fixed = c(""), data = list(),
-          modeltype = "lm", group = "", ic = "AIC", ...)
-\method{FindMinIC}{formula}(formula, data=list(), na.action=na.omit, ...)
+          modeltype = "lm", random = ~1, ic = "AIC", ...)
+\method{FindMinIC}{formula}(formula, data=list(), na.action=na.omit, fixed = c(""), random = ~1, ...)
 
 # find the minimum IC, fmi is the shorter name form of FindMinIC
 \method{fmi}{default}(coly, candidates = c(""), fixed = c(""), data = list(),
-    modeltype = "lm", group = "", ic = "AIC", ...)
-\method{fmi}{formula}(formula, data=list(), na.action=na.omit, ...)
+    modeltype = "lm", random = ~1, ic = "AIC", ...)
+\method{fmi}{formula}(formula, data=list(), na.action=na.omit, fixed = c(""), random = ~1, ...)
 %% TODO: use better name than coly?
 }
 \arguments{
@@ -45,8 +45,8 @@ An object containing the variables for use in the model.
   \item{modeltype}{
 Currently a choice between \code{"lm"} (the default) and \code{"lme"}.  If a model follows the calling convention of \code{\link{lm}}, it might work here, but it is not guaranteed.
 }
-  \item{group}{
-When \code{modeltype} = \code{"lme"}, use \code{group} to indicate the variable for \code{\link{groupedData}}
+  \item{random}{
+When \code{modeltype} = \code{"lme"}, use \code{random} the same way as would inside a call to \code{\link{lme}} and to indicate the variable for \code{\link{groupedData}}
 }
   \item{ic}{
 Type of information criterion to used.  Defaults to \code{"AIC"}.  Other options are \code{"AICc"} or \code{"BIC"}
@@ -96,12 +96,18 @@ print(summary(results.lm)$table[1:5,])
 results.bic = FindMinIC(coly, candidates, fixed, iris, ic="BIC")
 print(summary(results.bic)$table[1:5,])
 
-fm = FindMinIC(Infant.Mortality ~ ., swiss)
+fm = FindMinIC(Infant.Mortality ~ ., data = swiss)
 summary(fm)
+
+fm2 = FindMinIC(Infant.Mortality ~ Fertility + Agriculture + Education * Catholic,
+                data = swiss)
+summary(fm2)
 
 # list of first 5 models, ordered by AICc
 if (require(nlme)) {
-  results.aicc = FindMinIC(distance~age, data=Orthodont, ic="AICc", model="lme", group="Subject")
+  results.aicc = FindMinIC(distance~age, data=Orthodont, 
+                           ic="AICc", model="lme",
+                           random= ~ 1 | Subject)
   print(summary(results.aicc))
 }
 

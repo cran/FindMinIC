@@ -1,8 +1,8 @@
-1d1c3b1ded99757521f6ae4f4cfd2c4d *DESCRIPTION
+34baf175a85b486b3e6010dd3b60b04d *DESCRIPTION
 1e41447f533dcd707b23f66da907d1ba *NAMESPACE
-936ccc287dfdffbc9c629cb16b5d114c *R/cm.r
-5dcee745414c91fd00a97956a7ed82f7 *R/findMinIC.r
-8ab5aab5fcf87d94b94997ee27e27144 *man/FindMinIC-internal.Rd
+d1737aa3b2079aa8a38055f339562f26 *R/cm.r
+708702829bceda6521c6ef18011f9324 *R/findMinIC.r
+a43622c7b6095bd0a2e6436c16d8febb *man/FindMinIC-internal.Rd
 dca5bfc90e9e765aedec86e2026ffc67 *man/FindMinIC-package.Rd
-f6d2d5ef0f52df84c56cbfd32cb84e6f *man/FindMinIC.Rd
+d86a87ddfc19526739288ff198afeff3 *man/FindMinIC.Rd
 5817914148facc0f602cd219dd644012 *man/cm.Rd

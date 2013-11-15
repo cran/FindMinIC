@@ -2,23 +2,22 @@
 # uses as.sets from sets for power set of X
 
 splitvars <- function(fixed) {
-  if (length(fixed) == 0) {
+  if (length(fixed) == 0 || fixed == "") {
     return(fixed)
   }
-  tokens = strsplit(fixed,':')
-  fixed.terms = c()
-  for (tok in tokens) {
-    if (length(tok) > 1) {
+  fixed.terms = fixed
+  seps = c(':','\\*','\\|','/')
+  for (sep in seps) {
+    tokens = strsplit(fixed.terms, sep)
+    fixed.terms = c()
+    for (tok in tokens) {
       fixed.terms = c(fixed.terms, sub("-","",unlist(tok)))
-    } else {
-      # currently assuming fixed is in form of either a:b:c or a*b*c or a
-      # add more steps if other separators are needed
-      splittok = strsplit(c(tok),'\\*')
-      fixed.terms = c(fixed.terms, sub("-","",unlist(splittok)))
     }
+    fixed.terms = unlist(fixed.terms)
   }
   return(unique(fixed.terms))
 }
+
 
 getIC <- function(fit, ictype) {
   if (substr(ictype,1,3) == "AIC") {
@@ -36,42 +35,57 @@ getIC <- function(fit, ictype) {
     icval = AIC(fit)
   }
   icval
-}            
+}
 
 fmi <- function(coly, ...) UseMethod("fmi")
 
-fmi.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), modeltype="lm", group="", ic="AIC", ...) {
-  return(FindMinIC.default(coly, candidates, fixed, data, modeltype, group, ic, ...))
+fmi.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), modeltype="lm", random=~1, ic="AIC", ...) {
+  return(FindMinIC.default(coly, candidates, fixed, data, modeltype, random, ic, ...))
 }
 
-fmi.formula <- function(formula, data=list(), na.action=na.omit, ...) {
-  return(FindMinIC.formula(formula, data, na.action, ...))
+fmi.formula <- function(formula, data=list(), na.action=na.omit, fixed=c(""), random=~1, ...) {
+  return(FindMinIC.formula(formula, data, na.action, fixed, random, ...))
 }
 
 FindMinIC <- function(coly, ...) UseMethod("FindMinIC")
 
-FindMinIC.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), modeltype="lm", group="", ic = "AIC", ...){
+FindMinIC.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), modeltype="lm", random=~1, ic = "AIC", ...){
   fixed.vars = splitvars(fixed)
   cand.vars = splitvars(candidates)
+  random.terms = paste(random)[-1]
+  group.vars = splitvars(random.terms)
+  do.lme = FALSE
   if (modeltype == "lme") {
-    comb.vars = unique(c(fixed.vars, cand.vars, coly, group))
+    do.lme = TRUE
+    comb.vars = unique(c(fixed.vars, cand.vars, coly, group.vars))
   } else {
     comb.vars = unique(c(fixed.vars, cand.vars, coly))
   }
+  # strip out whitespace
+  comb.vars = gsub(" ","", comb.vars, fixed=TRUE)
+
   comb.vars = comb.vars[which(comb.vars!="1")]
-  tmp.df = subset(data, select=comb.vars)
-  
-  if (modeltype == "lme") {
-    # just using intercept for grouping for now
-    # because lme might be less stable/robust for other options
-    # TODO contemplate allowing the user to specify the variable(s) for grouping
+  comb.vars = comb.vars[which(comb.vars!=".")]
+
+  # This subsetting should work now, but it's not clear that it's necessary or useful
+  # so for now passing in entire data frame
+  # tmp.df = subset(data, select=comb.vars)
+  tmp.df = data
+
+  if (do.lme) {
+    # allowing full formula specification for groupedData
+    # note that using groupedData instead of passing random into lme directly
+    # keeps the user from being able to use certain syntaxes for the specification
+    # of the random effects.  Specifically, crossed random effects specified by something like 
+    #    random=pdBlocked(list(pdIdent(~1), pdIdent(~sample-1), pdIdent(~dilut-1)))
+    # are not allowed.  If these become necessary, groupedData use here will need to be rethought
     gdcall = parse(text = paste("groupedData(",
-                     coly, "~ 1 |", group,
+                     coly, " ~ ", random.terms,
                      ", data=tmp.df)"))
     tmp.gds = eval(gdcall)
-    tmp.gds = na.omit(tmp.gds)
+    
   } else {
-    tmp.gds = na.omit(tmp.df)
+    tmp.gds = tmp.df
   }
   fixed.model = ""
   firstelem = TRUE
@@ -112,22 +126,25 @@ FindMinIC.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), 
       }
       if(P > 1) model = paste(model, xtext[P], sep = "")
     }
-    if (modeltype == "lme") {
-      call = parse(text = paste("withRestarts(lme(",
+    if (do.lme) {
+      call = parse(text = paste("withRestarts(", modeltype, "(",
                      coly,
                      " ~ ",
                      fixed.model,
                      " + ",
                      model,
-                     ", random=~1",
-                     ", na.action = 'na.omit'",
                      ", method = 'ML'",
+                     ", random = random",
                      ", data = tmp.gds",
                      ",...)",
                      ")",
                      sep = "") )
-      fit = try(eval(call), silent = TRUE); if(class(fit) == "try-error") next
-    
+      fit = try(eval(call), silent = TRUE)
+      if(class(fit) == "try-error") {
+        warning(paste("Received error <", attr(fit, "condition"), "> while calling ", call))
+        next
+      }
+
       res = list(call = fit$call, IC = getIC(fit, ic), ictype = ic, formula = formula(fit))
       class(res) = "cm" # for candidate model
       results[[length(results)+1]] = res
@@ -144,7 +161,12 @@ FindMinIC.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), 
                      ", data = tmp.gds",
                      ",...)",
                      sep = "") )
-      fit = try(eval(call), silent = TRUE); if(class(fit) == "try-error") next
+      fit = try(eval(call), silent = TRUE);
+      if(class(fit) == "try-error") {
+        warning(paste("Received error <", attr(fit, "condition"), "> while calling ", call))
+        next
+      }
+
       res = list(call = fit$call, IC = getIC(fit, ic), ictype = ic, formula = formula(fit))
       class(res) = "cm" # for candidate model
       results[[length(results)+1]] = res
@@ -155,13 +177,12 @@ FindMinIC.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), 
     results = results[order(as.numeric(lapply(results, IC.cm)))]
   }
   first = results[[1]]
-  if (modeltype == "lme") {
+  if (do.lme) {
     # for lme, need to do REML instead of ML here
-    call = parse(text = paste("lme(",
+    call = parse(text = paste(modeltype,"(",
                    deparse(first$call$fixed, width.cutoff=500),
-                   ", random=~1",
                    ", data = tmp.gds",
-                   ", na.action = 'na.omit'",
+                   ", random = random",
                    ", method = 'REML'",
                    ",...)",
                    sep = ""
@@ -171,23 +192,25 @@ FindMinIC.default <- function(coly, candidates=c(""), fixed=c(""), data=list(), 
   }
   fit = eval(call)
   first$fit = fit
-  answer = list(results=results, data=tmp.gds, first=first, modeltype=modeltype)
+  answer = list(results=results, data=tmp.gds, first=first,
+                modeltype=modeltype, random=random)
   class(answer) = "cmList"
 
   return(answer)
 } # end FindMinIC.default
 
-FindMinIC.formula <- function(formula, data=list(), na.action=na.omit, ...)
+FindMinIC.formula <- function(formula, data=list(), na.action=na.omit, fixed=c(""), random=~1, ...)
 {
     mf <- model.frame(formula=formula, data=data, na.action=na.action)
     nms <- names(mf)
-    coly <- nms[[1]]
-    candidates <- nms[-1]
-    est <- FindMinIC.default(coly, candidates, data=data, ...)
+    trms <- unlist(strsplit(paste(formula)[-1], '\\+'))
+    trms <- gsub(" ","", trms, fixed=TRUE)
+    coly <- trms[[1]]
+    candidates <- unique(c(trms[-1], nms[-1]))
+    est <- FindMinIC.default(coly, candidates, data=data, fixed=fixed, random=random, ...)
     est$call <- match.call()
     est$formula <- formula
     est$terms <- attr(mf, "terms")
-    est$data <- mf
 
     est
 }

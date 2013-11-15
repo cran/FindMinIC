@@ -19,13 +19,15 @@ summaryTable <- function(object, index, ...)
 {
   # TODO what should this summary table really look like for lme case?
   fit = getNthModel(object, index)
+  do.lme = FALSE
   if (object$modeltype == "lme") {
+    do.lme = TRUE
     tbl = round(summary(fit)$tTable, 5)
   } else {
     tbl = round(coef(summary(fit) ), 5)
   }
   tbl11 = tbl[1, 1]
-  if (object$modeltype == "lme") {
+  if (do.lme) {
     tbl.pct = cbind(round(tbl[-1, 1] / tbl11 * 100, 2), round(tbl[-1, 5], 3) )
   } else {
     tbl.pct = cbind(round(tbl[-1, 1] / tbl11 * 100, 2), round(tbl[-1, 4], 3) )
@@ -42,6 +44,8 @@ getNthModel <- function(object, index)
   }
   # otherwise, need to calculate the model first
   tmp.gds=object$data
+  random=object$random
+  modeltype=object$modeltype
   return(with(tmp.gds,eval(object$results[[index]]$call)))
 }
 

@@ -33,8 +33,8 @@ type of IC to use, options are "AIC", "AICc", "BIC"
 }
 }
 \details{
-splitvars splits the variables in fixed into their component variables.  For instance, splitvars(c("A","B",C*A","-1","A:D","E:F:G")) will return
-c("A","B","C","1", "D", "E","F","G"
+splitvars splits the variables in fixed into their component variables.  For instance, splitvars(c("A","B",C*A","-1","A:D","E:F:G","H|I/J")) will return
+c("A","B","C","1", "D", "E","F","G","H","I","J"
 
 getx and gety will return the x and y sides of the given formula respectively
 
